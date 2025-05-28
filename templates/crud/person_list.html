@@ -1,0 +1,109 @@
+{% extends 'crud/base.html' %}
+
+{% block title %}Persons - Neo4j CRUD{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-users me-2"></i>Persons</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'person_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Person
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if persons %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>National ID</th>
+                            <th>Nationality</th>
+                            <th>Risk Score</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for person in persons %}
+                        <tr>
+                            <td><span class="badge bg-primary">{{ person.id }}</span></td>
+                            <td><strong>{{ person.name }}</strong></td>
+                            <td>{{ person.national_id }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ person.nationality }}</span>
+                            </td>
+                            <td>
+                                {% if person.risk_score >= 0.7 %}
+                                    <span class="badge bg-danger">{{ person.risk_score }}</span>
+                                {% elif person.risk_score >= 0.4 %}
+                                    <span class="badge bg-warning">{{ person.risk_score }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ person.risk_score }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'person_edit' person.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="confirmDelete('{{ person.id }}', '{{ person.name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No persons found</h5>
+                <p class="text-muted">Start by adding your first person.</p>
+                <a href="{% url 'person_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add First Person
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="personName"></strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(personId, personName) {
+    document.getElementById('personName').textContent = personName;
+    document.getElementById('deleteForm').action = "{% url 'person_delete' 'PLACEHOLDER' %}".replace('PLACEHOLDER', personId);
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %} 

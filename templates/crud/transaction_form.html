@@ -1,0 +1,124 @@
+{% extends 'crud/base.html' %}
+
+{% block title %}{{ action }} Transaction - Neo4j CRUD{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-exchange-alt me-2"></i>{{ action }} Transaction</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'transaction_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exchange-alt me-2"></i>Transaction Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id" class="form-label">ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id" name="id" 
+                                   value="{% if transaction %}{{ transaction.id }}{% endif %}" 
+                                   {% if transaction %}readonly{% endif %} required>
+                            <div class="form-text">Unique identifier for the transaction</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="amount" name="amount" 
+                                   value="{% if transaction %}{{ transaction.amount }}{% endif %}" 
+                                   min="0" step="0.01" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="date" class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="date" name="date" 
+                                   value="{% if transaction %}{{ transaction.date }}{% endif %}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="currency" class="form-label">Currency <span class="text-danger">*</span></label>
+                            <select class="form-control" id="currency" name="currency" required>
+                                <option value="">Select Currency</option>
+                                <option value="USD" {% if transaction.currency == 'USD' %}selected{% endif %}>USD - US Dollar</option>
+                                <option value="EUR" {% if transaction.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+                                <option value="GBP" {% if transaction.currency == 'GBP' %}selected{% endif %}>GBP - British Pound</option>
+                                <option value="JPY" {% if transaction.currency == 'JPY' %}selected{% endif %}>JPY - Japanese Yen</option>
+                                <option value="CAD" {% if transaction.currency == 'CAD' %}selected{% endif %}>CAD - Canadian Dollar</option>
+                                <option value="AUD" {% if transaction.currency == 'AUD' %}selected{% endif %}>AUD - Australian Dollar</option>
+                                <option value="CHF" {% if transaction.currency == 'CHF' %}selected{% endif %}>CHF - Swiss Franc</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="suspicious_score" class="form-label">Suspicious Score <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="suspicious_score" name="suspicious_score" 
+                                   value="{% if transaction %}{{ transaction.suspicious_score }}{% endif %}" 
+                                   min="0" max="1" step="0.01" required>
+                            <div class="form-text">Suspicious score between 0.0 and 1.0</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Suspicion Level</label>
+                            <div class="mt-2">
+                                <span id="suspiciousBadge" class="badge bg-secondary">Enter suspicious score</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'transaction_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{{ action }} Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const suspiciousScoreInput = document.getElementById('suspicious_score');
+    const suspiciousBadge = document.getElementById('suspiciousBadge');
+    
+    function updateSuspiciousBadge() {
+        const score = parseFloat(suspiciousScoreInput.value);
+        if (isNaN(score)) {
+            suspiciousBadge.textContent = 'Enter suspicious score';
+            suspiciousBadge.className = 'badge bg-secondary';
+            return;
+        }
+        
+        if (score >= 0.7) {
+            suspiciousBadge.textContent = 'Highly Suspicious';
+            suspiciousBadge.className = 'badge bg-danger';
+        } else if (score >= 0.4) {
+            suspiciousBadge.textContent = 'Moderately Suspicious';
+            suspiciousBadge.className = 'badge bg-warning';
+        } else {
+            suspiciousBadge.textContent = 'Low Suspicion';
+            suspiciousBadge.className = 'badge bg-success';
+        }
+    }
+    
+    suspiciousScoreInput.addEventListener('input', updateSuspiciousBadge);
+    updateSuspiciousBadge(); // Initial call
+});
+</script>
+{% endblock %} 
