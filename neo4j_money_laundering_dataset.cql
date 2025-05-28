@@ -45,7 +45,7 @@ CREATE (p43:Person {id: 'P43', name: 'Jesse Sparks', national_id: '883-33-2186',
 CREATE (p44:Person {id: 'P44', name: 'Marilyn Reed', national_id: '893-20-4562', nationality: 'Thailand', risk_score: 0.33});
 CREATE (p45:Person {id: 'P45', name: 'Andrew Becker', national_id: '572-41-6012', nationality: 'Wallis and Futuna', risk_score: 0.87});
 CREATE (p46:Person {id: 'P46', name: 'Sarah Mathis', national_id: '719-78-8102', nationality: 'Rwanda', risk_score: 0.19});
-CREATE (p47:Person {id: 'P47', name: 'Judy Graham', national_id: '893-69-2922', nationality: 'Cote d'Ivoire', risk_score: 0.57});
+CREATE (p47:Person {id: 'P47', name: 'Judy Graham', national_id: '893-69-2922', nationality: "Cote d'Ivoire", risk_score: 0.57});
 CREATE (p48:Person {id: 'P48', name: 'Eddie Taylor', national_id: '278-43-5530', nationality: 'Somalia', risk_score: 0.24});
 CREATE (p49:Person {id: 'P49', name: 'Brandon Chan', national_id: '037-06-4418', nationality: 'Central African Republic', risk_score: 0.97});
 CREATE (c0:Company {id: 'C0', name: 'Holden LLC', country: 'Guyana', type: 'Domestic', risk_score: 0.45});
@@ -66,7 +66,7 @@ CREATE (c14:Company {id: 'C14', name: 'Kramer-Klein', country: 'Cuba', type: 'Of
 CREATE (c15:Company {id: 'C15', name: 'Miller-Robinson', country: 'Eritrea', type: 'Offshore', risk_score: 0.88});
 CREATE (c16:Company {id: 'C16', name: 'Waters, Reynolds and Howard', country: 'Bahrain', type: 'Offshore', risk_score: 0.84});
 CREATE (c17:Company {id: 'C17', name: 'Johnson, Fox and Goodwin', country: 'Cook Islands', type: 'Domestic', risk_score: 0.92});
-CREATE (c18:Company {id: 'C18', name: 'Crawford LLC', country: 'Cote d'Ivoire', type: 'Domestic', risk_score: 0.68});
+CREATE (c18:Company {id: 'C18', name: 'Crawford LLC', country: "Cote d'Ivoire", type: 'Domestic', risk_score: 0.68});
 CREATE (c19:Company {id: 'C19', name: 'Williams, Gould and Lewis', country: 'Cameroon', type: 'Domestic', risk_score: 0.52});
 CREATE (c20:Company {id: 'C20', name: 'Gonzalez Group', country: 'Guyana', type: 'Domestic', risk_score: 0.81});
 CREATE (c21:Company {id: 'C21', name: 'Wilcox, Garcia and Carlson', country: 'Libyan Arab Jamahiriya', type: 'Offshore', risk_score: 0.9});
@@ -92,7 +92,7 @@ CREATE (a10:BankAccount {id: 'A10', account_number: 'GB98JRNX29645137580660', ba
 CREATE (a11:BankAccount {id: 'A11', account_number: 'GB53GLJP12141892762662', bank_name: 'Chung LLC', country: 'Vietnam', currency: 'USD'});
 CREATE (a12:BankAccount {id: 'A12', account_number: 'GB30QELO17340797034148', bank_name: 'Moore, Mccarthy and Ruiz', country: 'Philippines', currency: 'GBP'});
 CREATE (a13:BankAccount {id: 'A13', account_number: 'GB63PYHR64014004689671', bank_name: 'King, Campbell and Fischer', country: 'United States of America', currency: 'USD'});
-CREATE (a14:BankAccount {id: 'A14', account_number: 'GB67GTCB14485183216448', bank_name: 'Berry Ltd', country: 'Cote d'Ivoire', currency: 'USD'});
+CREATE (a14:BankAccount {id: 'A14', account_number: 'GB67GTCB14485183216448', bank_name: 'Berry Ltd', country: "Cote d'Ivoire", currency: 'USD'});
 CREATE (a15:BankAccount {id: 'A15', account_number: 'GB38RDNU86447592211669', bank_name: 'Taylor-Barnett', country: 'Guinea', currency: 'GBP'});
 CREATE (a16:BankAccount {id: 'A16', account_number: 'GB33UPXN37785707427093', bank_name: 'Kelly Group', country: 'Tuvalu', currency: 'GBP'});
 CREATE (a17:BankAccount {id: 'A17', account_number: 'GB52AQCV16050190443294', bank_name: 'Garcia Group', country: 'Saint Barthelemy', currency: 'GBP'});
