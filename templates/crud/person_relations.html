@@ -1,0 +1,975 @@
+{% extends 'crud/base.html' %}
+
+{% block title %}Person Relations - Neo4j CRUD{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-project-diagram me-2"></i>Relations Explorer</h1>
+</div>
+
+<!-- Person Selection -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-user-check me-2"></i>Sélectionner une personne</h5>
+    </div>
+    <div class="card-body">
+        <form id="personForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <select class="form-select" id="personSelect" name="person_id">
+                        <option value="">Choisir une personne...</option>
+                        {% for person in persons %}
+                        <option value="{{ person.id }}" data-name="{{ person.name }}" data-risk="{{ person.risk_score }}">
+                            {{ person.name }} ({{ person.nationality }}) - Risk: {{ person.risk_score }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-primary" id="exploreBtn" disabled>
+                        <i class="fas fa-search me-2"></i>Explorer les relations
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="resetBtn" disabled>
+                        <i class="fas fa-redo me-2"></i>Reset
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Graph Controls -->
+<div class="card mb-4" id="graphControls" style="display: none;">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-gamepad me-2"></i>Contrôles de visualisation</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="viewMode" class="form-label">Mode de vue</label>
+                <select class="form-select" id="viewMode">
+                    <option value="2d">2D Classique</option>
+                    <option value="3d" selected>3D Immersif</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="layoutType" class="form-label">Type de layout</label>
+                <select class="form-select" id="layoutType">
+                    <option value="force">Force-directed</option>
+                    <option value="circular">Circulaire</option>
+                    <option value="hierarchical">Hiérarchique</option>
+                    <option value="sphere">Sphérique</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="nodeSize" class="form-label">Taille des nœuds</label>
+                <input type="range" class="form-range" id="nodeSize" min="0.5" max="3" step="0.1" value="1">
+                <small class="text-muted">x<span id="nodeSizeValue">1.0</span></small>
+            </div>
+            <div class="col-md-3">
+                <label for="animationSpeed" class="form-label">Vitesse d'animation</label>
+                <input type="range" class="form-range" id="animationSpeed" min="0.1" max="2" step="0.1" value="1">
+                <small class="text-muted">x<span id="animationSpeedValue">1.0</span></small>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="autoRotateBtn">
+                        <i class="fas fa-sync-alt me-1"></i>Auto-rotation
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="resetCameraBtn">
+                        <i class="fas fa-video me-1"></i>Reset caméra
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" id="fullscreenBtn">
+                        <i class="fas fa-expand me-1"></i>Plein écran
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" id="screenshotBtn">
+                        <i class="fas fa-camera me-1"></i>Capture
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Query Progress -->
+<div class="card mb-4" id="queryCard" style="display: none;">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Requêtes Neo4j en cours</h5>
+    </div>
+    <div class="card-body">
+        <div id="queryProgress">
+            <!-- Queries will be added here progressively -->
+        </div>
+    </div>
+</div>
+
+<!-- Graph Visualization -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0"><i class="fas fa-project-diagram me-2"></i>Graphique des relations</h5>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary" id="view2DBtn">2D</button>
+                    <button type="button" class="btn btn-primary" id="view3DBtn">3D</button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="graph-container" style="height: 600px; border-radius: 0.375rem; position: relative;">
+                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                        <div class="text-center">
+                            <i class="fas fa-project-diagram fa-3x mb-3"></i>
+                            <p>Sélectionnez une personne pour voir ses relations</p>
+                        </div>
+                    </div>
+                    <!-- 3D Controls Overlay -->
+                    <div id="controls-overlay" style="position: absolute; top: 10px; left: 10px; z-index: 1000; display: none;">
+                        <div class="card bg-dark text-white" style="opacity: 0.8;">
+                            <div class="card-body p-2">
+                                <small>
+                                    <strong>Contrôles 3D:</strong><br>
+                                    🖱️ Clic gauche: Rotation<br>
+                                    🖱️ Clic droit: Pan<br>
+                                    🎯 Molette: Zoom<br>
+                                    📱 Touch: Pinch/Rotate
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Relations Summary -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-info-circle me-2"></i>Résumé des relations</h5>
+            </div>
+            <div class="card-body" id="relationsSummary">
+                <div class="text-center text-muted">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <p>Les informations apparaîtront ici après la sélection</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0"><i class="fas fa-palette me-2"></i>Légende</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #4CAF50; border-radius: 50%;"></div>
+                    <small>Personne</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #2196F3; border-radius: 50%;"></div>
+                    <small>Compte bancaire</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #FF9800; border-radius: 50%;"></div>
+                    <small>Transaction</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #9C27B0; border-radius: 50%;"></div>
+                    <small>Entreprise</small>
+                </div>
+                <hr>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 2px; background-color: #333;"></div>
+                    <small>OWNS (Possède)</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 2px; background-color: #f44336;"></div>
+                    <small>SENDS (Envoie)</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="me-2" style="width: 20px; height: 2px; background-color: #ff5722;"></div>
+                    <small>TO (Vers)</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3D Performance Info -->
+        <div class="card mt-3" id="performanceCard" style="display: none;">
+            <div class="card-header">
+                <h6 class="card-title mb-0"><i class="fas fa-tachometer-alt me-2"></i>Performance 3D</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <small><strong>FPS:</strong> <span id="fpsCounter">--</span></small>
+                </div>
+                <div class="mb-2">
+                    <small><strong>Nœuds:</strong> <span id="nodeCount">--</span></small>
+                </div>
+                <div class="mb-2">
+                    <small><strong>Liens:</strong> <span id="linkCount">--</span></small>
+                </div>
+                <div class="mb-2">
+                    <small><strong>Renderer:</strong> <span id="rendererInfo">WebGL</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+let currentGraph = null;
+let svg = null;
+let scene, camera, renderer, controls;
+let nodes3D = [], links3D = [];
+let currentMode = '3d';
+let animationId;
+let autoRotate = false;
+let nodeScale = 1.0;
+let animationSpeed = 1.0;
+
+// Performance monitoring
+let frameCount = 0;
+let lastTime = performance.now();
+
+document.addEventListener('DOMContentLoaded', function() {
+    const personSelect = document.getElementById('personSelect');
+    const exploreBtn = document.getElementById('exploreBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const queryCard = document.getElementById('queryCard');
+    const queryProgress = document.getElementById('queryProgress');
+    const relationsSummary = document.getElementById('relationsSummary');
+    const graphControls = document.getElementById('graphControls');
+    
+    // 3D Controls
+    const viewMode = document.getElementById('viewMode');
+    const layoutType = document.getElementById('layoutType');
+    const nodeSize = document.getElementById('nodeSize');
+    const animationSpeedControl = document.getElementById('animationSpeed');
+    const autoRotateBtn = document.getElementById('autoRotateBtn');
+    const resetCameraBtn = document.getElementById('resetCameraBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const screenshotBtn = document.getElementById('screenshotBtn');
+    const view2DBtn = document.getElementById('view2DBtn');
+    const view3DBtn = document.getElementById('view3DBtn');
+
+    // Enable explore button when person is selected
+    personSelect.addEventListener('change', function() {
+        exploreBtn.disabled = !this.value;
+        if (!this.value) {
+            resetBtn.disabled = true;
+            queryCard.style.display = 'none';
+            graphControls.style.display = 'none';
+            resetGraph();
+        }
+    });
+
+    // Explore button click
+    exploreBtn.addEventListener('click', function() {
+        const personId = personSelect.value;
+        const personName = personSelect.options[personSelect.selectedIndex].dataset.name;
+        
+        if (personId) {
+            explorePersonRelations(personId, personName);
+            resetBtn.disabled = false;
+            graphControls.style.display = 'block';
+        }
+    });
+
+    // Reset button click
+    resetBtn.addEventListener('click', function() {
+        personSelect.value = '';
+        exploreBtn.disabled = true;
+        resetBtn.disabled = true;
+        queryCard.style.display = 'none';
+        graphControls.style.display = 'none';
+        queryProgress.innerHTML = '';
+        resetGraph();
+        resetSummary();
+    });
+
+    // View mode controls
+    viewMode.addEventListener('change', function() {
+        currentMode = this.value;
+        if (currentGraph) {
+            if (currentMode === '3d') {
+                create3DGraph(currentGraph);
+                document.getElementById('performanceCard').style.display = 'block';
+                document.getElementById('controls-overlay').style.display = 'block';
+            } else {
+                create2DGraph(currentGraph);
+                document.getElementById('performanceCard').style.display = 'none';
+                document.getElementById('controls-overlay').style.display = 'none';
+            }
+        }
+    });
+
+    view2DBtn.addEventListener('click', function() {
+        viewMode.value = '2d';
+        viewMode.dispatchEvent(new Event('change'));
+        view2DBtn.classList.add('btn-primary');
+        view2DBtn.classList.remove('btn-outline-primary');
+        view3DBtn.classList.add('btn-outline-primary');
+        view3DBtn.classList.remove('btn-primary');
+    });
+
+    view3DBtn.addEventListener('click', function() {
+        viewMode.value = '3d';
+        viewMode.dispatchEvent(new Event('change'));
+        view3DBtn.classList.add('btn-primary');
+        view3DBtn.classList.remove('btn-outline-primary');
+        view2DBtn.classList.add('btn-outline-primary');
+        view2DBtn.classList.remove('btn-primary');
+    });
+
+    // Layout type change
+    layoutType.addEventListener('change', function() {
+        if (currentGraph && currentMode === '3d') {
+            applyLayout(this.value);
+        }
+    });
+
+    // Node size control
+    nodeSize.addEventListener('input', function() {
+        nodeScale = parseFloat(this.value);
+        document.getElementById('nodeSizeValue').textContent = nodeScale.toFixed(1);
+        if (currentMode === '3d' && nodes3D.length > 0) {
+            updateNodeSizes();
+        }
+    });
+
+    // Animation speed control
+    animationSpeedControl.addEventListener('input', function() {
+        animationSpeed = parseFloat(this.value);
+        document.getElementById('animationSpeedValue').textContent = animationSpeed.toFixed(1);
+    });
+
+    // Auto-rotate toggle
+    autoRotateBtn.addEventListener('click', function() {
+        autoRotate = !autoRotate;
+        if (controls) {
+            controls.autoRotate = autoRotate;
+        }
+        this.classList.toggle('btn-outline-primary');
+        this.classList.toggle('btn-primary');
+    });
+
+    // Reset camera
+    resetCameraBtn.addEventListener('click', function() {
+        if (camera && controls) {
+            camera.position.set(0, 0, 500);
+            controls.reset();
+        }
+    });
+
+    // Fullscreen toggle
+    fullscreenBtn.addEventListener('click', function() {
+        const container = document.getElementById('graph-container');
+        if (!document.fullscreenElement) {
+            container.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // Screenshot
+    screenshotBtn.addEventListener('click', function() {
+        if (renderer) {
+            const link = document.createElement('a');
+            link.download = 'graph-3d-screenshot.png';
+            link.href = renderer.domElement.toDataURL();
+            link.click();
+        }
+    });
+
+    function resetGraph() {
+        const container = document.getElementById('graph-container');
+        
+        // Clean up 3D scene
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
+        if (renderer) {
+            renderer.dispose();
+            container.removeChild(renderer.domElement);
+        }
+        
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div class="text-center">
+                    <i class="fas fa-project-diagram fa-3x mb-3"></i>
+                    <p>Sélectionnez une personne pour voir ses relations</p>
+                </div>
+            </div>
+        `;
+        
+        currentGraph = null;
+        nodes3D = [];
+        links3D = [];
+    }
+
+    function resetSummary() {
+        relationsSummary.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <p>Les informations apparaîtront ici après la sélection</p>
+            </div>
+        `;
+    }
+
+    function addQuery(title, query, description) {
+        const queryDiv = document.createElement('div');
+        queryDiv.className = 'mb-3 p-3 border rounded';
+        queryDiv.innerHTML = `
+            <h6><i class="fas fa-play me-2"></i>${title}</h6>
+            <pre class="mb-2"><code>${query}</code></pre>
+            <small class="text-muted">${description}</small>
+        `;
+        queryProgress.appendChild(queryDiv);
+        
+        // Scroll to the new query
+        queryDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function explorePersonRelations(personId, personName) {
+        queryCard.style.display = 'block';
+        queryProgress.innerHTML = '';
+        
+        try {
+            // Step 1: Get person details
+            addQuery(
+                'Étape 1: Récupérer les détails de la personne',
+                `MATCH (p:Person {id: '${personId}'}) RETURN p`,
+                'Récupère les informations de base de la personne sélectionnée.'
+            );
+            
+            await sleep(1000);
+            
+            // Step 2: Get bank accounts
+            addQuery(
+                'Étape 2: Trouver les comptes bancaires',
+                `MATCH (p:Person {id: '${personId}'})-[:OWNS]->(a:BankAccount) RETURN p, a`,
+                'Trouve tous les comptes bancaires possédés par cette personne.'
+            );
+            
+            await sleep(1000);
+            
+            // Step 3: Get transactions
+            addQuery(
+                'Étape 3: Récupérer les transactions',
+                `MATCH (p:Person {id: '${personId}'})-[:OWNS]->(a:BankAccount)-[:SENDS]->(t:Transaction) RETURN p, a, t`,
+                'Récupère toutes les transactions envoyées depuis les comptes de cette personne.'
+            );
+            
+            await sleep(1000);
+            
+            // Step 4: Get receiving transactions
+            addQuery(
+                'Étape 4: Transactions reçues',
+                `MATCH (p:Person {id: '${personId}'})-[:OWNS]->(a:BankAccount)<-[:TO]-(t:Transaction) RETURN p, a, t`,
+                'Trouve toutes les transactions reçues sur les comptes de cette personne.'
+            );
+            
+            await sleep(1000);
+            
+            // Step 5: Get complete network
+            addQuery(
+                'Étape 5: Réseau complet de relations',
+                `MATCH path = (p:Person {id: '${personId}'})-[:OWNS]->(a:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(a2:BankAccount)<-[:OWNS]-(p2:Person)
+RETURN path`,
+                'Construit le réseau complet des relations de transactions entre personnes.'
+            );
+            
+            // Fetch actual data
+            const response = await fetch(`/person-relations-data/${personId}/`);
+            const data = await response.json();
+            
+            // Store current graph data
+            currentGraph = data;
+            
+            // Create graph based on current mode
+            if (currentMode === '3d') {
+                create3DGraph(data);
+                document.getElementById('performanceCard').style.display = 'block';
+                document.getElementById('controls-overlay').style.display = 'block';
+            } else {
+                create2DGraph(data);
+                document.getElementById('performanceCard').style.display = 'none';
+                document.getElementById('controls-overlay').style.display = 'none';
+            }
+            
+            updateSummary(data, personName);
+            
+        } catch (error) {
+            console.error('Error exploring relations:', error);
+            alert('Erreur lors de l\'exploration des relations');
+        }
+    }
+
+    function create2DGraph(data) {
+        // Clear previous graph
+        const container = document.getElementById('graph-container');
+        container.innerHTML = '';
+        
+        const width = container.clientWidth;
+        const height = 600;
+        
+        svg = d3.select('#graph-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        // Create force simulation
+        const simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2));
+        
+        // Create links
+        const link = svg.append('g')
+            .selectAll('line')
+            .data(data.links)
+            .enter().append('line')
+            .attr('stroke', d => {
+                switch(d.type) {
+                    case 'OWNS': return '#333';
+                    case 'SENDS': return '#f44336';
+                    case 'TO': return '#ff5722';
+                    default: return '#999';
+                }
+            })
+            .attr('stroke-width', 2);
+        
+        // Create nodes
+        const node = svg.append('g')
+            .selectAll('circle')
+            .data(data.nodes)
+            .enter().append('circle')
+            .attr('r', d => {
+                switch(d.type) {
+                    case 'Person': return 15 * nodeScale;
+                    case 'BankAccount': return 12 * nodeScale;
+                    case 'Transaction': return 10 * nodeScale;
+                    case 'Company': return 13 * nodeScale;
+                    default: return 8 * nodeScale;
+                }
+            })
+            .attr('fill', d => {
+                switch(d.type) {
+                    case 'Person': return '#4CAF50';
+                    case 'BankAccount': return '#2196F3';
+                    case 'Transaction': return '#FF9800';
+                    case 'Company': return '#9C27B0';
+                    default: return '#999';
+                }
+            })
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+        
+        // Add labels
+        const label = svg.append('g')
+            .selectAll('text')
+            .data(data.nodes)
+            .enter().append('text')
+            .text(d => d.label)
+            .attr('font-size', '12px')
+            .attr('dx', 20)
+            .attr('dy', 5);
+        
+        // Add tooltips
+        node.append('title')
+            .text(d => `${d.type}: ${d.label}\n${d.details || ''}`);
+        
+        // Update positions on simulation tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+            
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    }
+
+    function create3DGraph(data) {
+        const container = document.getElementById('graph-container');
+        container.innerHTML = '';
+        
+        // Add controls overlay
+        container.innerHTML = `
+            <div id="controls-overlay" style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
+                <div class="card bg-dark text-white" style="opacity: 0.8;">
+                    <div class="card-body p-2">
+                        <small>
+                            <strong>Contrôles 3D:</strong><br>
+                            🖱️ Clic gauche: Rotation<br>
+                            🖱️ Clic droit: Pan<br>
+                            🎯 Molette: Zoom<br>
+                            📱 Touch: Pinch/Rotate
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const width = container.clientWidth;
+        const height = 600;
+        
+        // Initialize Three.js scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8f9fa);
+        
+        camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
+        camera.position.set(0, 0, 500);
+        
+        renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+        
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(100, 100, 50);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+        
+        // Initialize controls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = autoRotate;
+        controls.autoRotateSpeed = 2.0;
+        
+        // Create 3D nodes and links
+        create3DNodes(data.nodes);
+        create3DLinks(data.links);
+        
+        // Apply initial layout
+        applyLayout(layoutType.value);
+        
+        // Update counters
+        document.getElementById('nodeCount').textContent = data.nodes.length;
+        document.getElementById('linkCount').textContent = data.links.length;
+        
+        // Start animation loop
+        animate();
+    }
+
+    function create3DNodes(nodes) {
+        nodes3D = [];
+        
+        nodes.forEach(node => {
+            let geometry, material;
+            
+            // Different geometries for different node types
+            switch(node.type) {
+                case 'Person':
+                    geometry = new THREE.SphereGeometry(15 * nodeScale, 16, 16);
+                    material = new THREE.MeshLambertMaterial({ color: 0x4CAF50 });
+                    break;
+                case 'BankAccount':
+                    geometry = new THREE.BoxGeometry(20 * nodeScale, 20 * nodeScale, 20 * nodeScale);
+                    material = new THREE.MeshLambertMaterial({ color: 0x2196F3 });
+                    break;
+                case 'Transaction':
+                    geometry = new THREE.OctahedronGeometry(12 * nodeScale);
+                    material = new THREE.MeshLambertMaterial({ color: 0xFF9800 });
+                    break;
+                case 'Company':
+                    geometry = new THREE.CylinderGeometry(15 * nodeScale, 15 * nodeScale, 20 * nodeScale);
+                    material = new THREE.MeshLambertMaterial({ color: 0x9C27B0 });
+                    break;
+                default:
+                    geometry = new THREE.SphereGeometry(10 * nodeScale, 8, 8);
+                    material = new THREE.MeshLambertMaterial({ color: 0x999999 });
+            }
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = node;
+            
+            // Add text label
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.fillStyle = '#000000';
+            context.font = '16px Arial';
+            context.textAlign = 'center';
+            context.fillText(node.label, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(50, 12.5, 1);
+            sprite.position.set(0, 25, 0);
+            mesh.add(sprite);
+            
+            scene.add(mesh);
+            nodes3D.push(mesh);
+        });
+    }
+
+    function create3DLinks(links) {
+        links3D = [];
+        
+        links.forEach(link => {
+            const sourceNode = nodes3D.find(n => n.userData.id === link.source.id || n.userData.id === link.source);
+            const targetNode = nodes3D.find(n => n.userData.id === link.target.id || n.userData.id === link.target);
+            
+            if (sourceNode && targetNode) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    sourceNode.position.x, sourceNode.position.y, sourceNode.position.z,
+                    targetNode.position.x, targetNode.position.y, targetNode.position.z
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                let color;
+                switch(link.type) {
+                    case 'OWNS': color = 0x333333; break;
+                    case 'SENDS': color = 0xf44336; break;
+                    case 'TO': color = 0xff5722; break;
+                    default: color = 0x999999;
+                }
+                
+                const material = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
+                const line = new THREE.Line(geometry, material);
+                line.userData = { source: sourceNode, target: targetNode, link: link };
+                
+                scene.add(line);
+                links3D.push(line);
+            }
+        });
+    }
+
+    function applyLayout(layoutType) {
+        if (!nodes3D.length) return;
+        
+        const nodeCount = nodes3D.length;
+        
+        switch(layoutType) {
+            case 'circular':
+                nodes3D.forEach((node, i) => {
+                    const angle = (i / nodeCount) * Math.PI * 2;
+                    const radius = 200;
+                    node.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        0
+                    );
+                });
+                break;
+                
+            case 'sphere':
+                nodes3D.forEach((node, i) => {
+                    const phi = Math.acos(-1 + (2 * i) / nodeCount);
+                    const theta = Math.sqrt(nodeCount * Math.PI) * phi;
+                    const radius = 200;
+                    node.position.set(
+                        radius * Math.cos(theta) * Math.sin(phi),
+                        radius * Math.sin(theta) * Math.sin(phi),
+                        radius * Math.cos(phi)
+                    );
+                });
+                break;
+                
+            case 'hierarchical':
+                // Simple hierarchical layout
+                const levels = {};
+                nodes3D.forEach(node => {
+                    const type = node.userData.type;
+                    if (!levels[type]) levels[type] = [];
+                    levels[type].push(node);
+                });
+                
+                let yOffset = -200;
+                Object.keys(levels).forEach(type => {
+                    const nodesInLevel = levels[type];
+                    nodesInLevel.forEach((node, i) => {
+                        node.position.set(
+                            (i - nodesInLevel.length / 2) * 100,
+                            yOffset,
+                            0
+                        );
+                    });
+                    yOffset += 150;
+                });
+                break;
+                
+            default: // force-directed
+                // Simple force-directed layout
+                nodes3D.forEach(node => {
+                    node.position.set(
+                        (Math.random() - 0.5) * 400,
+                        (Math.random() - 0.5) * 400,
+                        (Math.random() - 0.5) * 400
+                    );
+                });
+        }
+        
+        // Update link positions
+        updateLinkPositions();
+    }
+
+    function updateLinkPositions() {
+        links3D.forEach(link => {
+            const positions = link.geometry.attributes.position.array;
+            positions[0] = link.userData.source.position.x;
+            positions[1] = link.userData.source.position.y;
+            positions[2] = link.userData.source.position.z;
+            positions[3] = link.userData.target.position.x;
+            positions[4] = link.userData.target.position.y;
+            positions[5] = link.userData.target.position.z;
+            link.geometry.attributes.position.needsUpdate = true;
+        });
+    }
+
+    function updateNodeSizes() {
+        nodes3D.forEach(node => {
+            const baseScale = nodeScale;
+            let scale;
+            
+            switch(node.userData.type) {
+                case 'Person': scale = 15 * baseScale; break;
+                case 'BankAccount': scale = 12 * baseScale; break;
+                case 'Transaction': scale = 10 * baseScale; break;
+                case 'Company': scale = 13 * baseScale; break;
+                default: scale = 8 * baseScale;
+            }
+            
+            node.scale.setScalar(scale / 15); // Normalize to base size
+        });
+    }
+
+    function animate() {
+        animationId = requestAnimationFrame(animate);
+        
+        // Update controls
+        controls.update();
+        
+        // Apply animation speed
+        if (controls.autoRotate) {
+            controls.autoRotateSpeed = 2.0 * animationSpeed;
+        }
+        
+        // Update FPS counter
+        frameCount++;
+        const currentTime = performance.now();
+        if (currentTime - lastTime >= 1000) {
+            document.getElementById('fpsCounter').textContent = frameCount;
+            frameCount = 0;
+            lastTime = currentTime;
+        }
+        
+        // Render scene
+        renderer.render(scene, camera);
+    }
+
+    function updateSummary(data, personName) {
+        const nodes = data.nodes;
+        const links = data.links;
+        
+        const bankAccounts = nodes.filter(n => n.type === 'BankAccount').length;
+        const transactions = nodes.filter(n => n.type === 'Transaction').length;
+        const companies = nodes.filter(n => n.type === 'Company').length;
+        const connectedPersons = nodes.filter(n => n.type === 'Person').length - 1; // Exclude selected person
+        
+        const suspiciousTransactions = nodes.filter(n => 
+            n.type === 'Transaction' && n.suspicious_score && n.suspicious_score > 0.7
+        ).length;
+        
+        relationsSummary.innerHTML = `
+            <h6><i class="fas fa-user me-2"></i>${personName}</h6>
+            <hr>
+            <div class="mb-2">
+                <i class="fas fa-university me-2"></i>
+                <strong>Comptes bancaires:</strong> ${bankAccounts}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-exchange-alt me-2"></i>
+                <strong>Transactions:</strong> ${transactions}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-building me-2"></i>
+                <strong>Entreprises liées:</strong> ${companies}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-users me-2"></i>
+                <strong>Personnes connectées:</strong> ${connectedPersons}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Transactions suspectes:</strong> 
+                <span class="badge ${suspiciousTransactions > 0 ? 'bg-danger' : 'bg-success'}">${suspiciousTransactions}</span>
+            </div>
+            <hr>
+            <div class="mb-2">
+                <i class="fas fa-project-diagram me-2"></i>
+                <strong>Total nœuds:</strong> ${nodes.length}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-link me-2"></i>
+                <strong>Total relations:</strong> ${links.length}
+            </div>
+        `;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (renderer && camera) {
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth;
+            const height = 600;
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+    });
+});
+</script>
+{% endblock %} 

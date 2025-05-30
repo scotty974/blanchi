@@ -284,4 +284,32 @@ def suspicious_transactions(request):
 def neo4j_queries(request):
     return render(request, 'crud/neo4j_queries.html')
 
+# Person Relations
+def person_relations(request):
+    with Neo4jService() as neo4j:
+        persons = neo4j.get_all_persons()
+    return render(request, 'crud/person_relations.html', {'persons': persons})
+
+def person_relations_data(request, person_id):
+    """API endpoint to get person relations data for graph visualization"""
+    try:
+        with Neo4jService() as neo4j:
+            data = neo4j.get_person_relations(person_id)
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def suspicious_network_data(request):
+    """API endpoint to get suspicious network data for graph visualization"""
+    try:
+        threshold = float(request.GET.get('threshold', 0.8))
+        limit = int(request.GET.get('limit', 20))
+        analysis_type = request.GET.get('type', 'network')
+        
+        with Neo4jService() as neo4j:
+            data = neo4j.get_suspicious_network(threshold, limit, analysis_type)
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 

@@ -5,23 +5,185 @@
 {% block content %}
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2"><i class="fas fa-exclamation-triangle me-2"></i>Suspicious Transactions</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-primary" id="analyzeBtn">
+            <i class="fas fa-search me-2"></i>Analyser le réseau
+        </button>
+        <button type="button" class="btn btn-secondary ms-2" id="resetAnalysisBtn" disabled>
+            <i class="fas fa-redo me-2"></i>Reset
+        </button>
+    </div>
 </div>
 
-<!-- Neo4j Query Display -->
+<!-- Threshold Selection -->
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Query</h5>
+        <h5 class="card-title mb-0"><i class="fas fa-sliders-h me-2"></i>Configuration de l'analyse</h5>
     </div>
     <div class="card-body">
-        <pre><code class="language-cypher">MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
-WHERE t.suspicious_score > $threshold
-RETURN sender.name AS from, receiver.name AS to, t.amount AS amount, 
-       t.suspicious_score AS score, t.date AS date, t.currency AS currency</code></pre>
-        <small class="text-muted">Cette requête trouve toutes les transactions suspectes avec un score supérieur au seuil défini (0.8 par défaut).</small>
+        <div class="row">
+            <div class="col-md-3">
+                <label for="thresholdSelect" class="form-label">Seuil de suspicion</label>
+                <select class="form-select" id="thresholdSelect">
+                    <option value="0.5">0.5 - Suspicion modérée</option>
+                    <option value="0.7">0.7 - Suspicion élevée</option>
+                    <option value="0.8" selected>0.8 - Très suspecte</option>
+                    <option value="0.9">0.9 - Extrêmement suspecte</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="limitSelect" class="form-label">Limite de résultats</label>
+                <select class="form-select" id="limitSelect">
+                    <option value="10">10 transactions</option>
+                    <option value="20" selected>20 transactions</option>
+                    <option value="50">50 transactions</option>
+                    <option value="100">100 transactions</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="analysisType" class="form-label">Type d'analyse</label>
+                <select class="form-select" id="analysisType">
+                    <option value="network">Réseau complet</option>
+                    <option value="patterns">Patterns suspects</option>
+                    <option value="clusters">Clusters de risque</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="viewMode3D" class="form-label">Mode de vue</label>
+                <select class="form-select" id="viewMode3D">
+                    <option value="2d">2D Classique</option>
+                    <option value="3d" selected>3D Immersif</option>
+                </select>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- 3D Controls -->
+<div class="card mb-4" id="controls3D" style="display: none;">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-gamepad me-2"></i>Contrôles 3D</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="layoutType3D" class="form-label">Layout</label>
+                <select class="form-select" id="layoutType3D">
+                    <option value="force">Force-directed</option>
+                    <option value="circular">Circulaire</option>
+                    <option value="sphere">Sphérique</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="nodeSize3D" class="form-label">Taille nœuds</label>
+                <input type="range" class="form-range" id="nodeSize3D" min="0.5" max="2" step="0.1" value="1">
+            </div>
+            <div class="col-md-4">
+                <div class="btn-group btn-group-sm mt-4" role="group">
+                    <button type="button" class="btn btn-outline-primary" id="autoRotate3D">
+                        <i class="fas fa-sync-alt"></i> Auto-rotation
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="resetCamera3D">
+                        <i class="fas fa-video"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Query Progress -->
+<div class="card mb-4" id="queryCard" style="display: none;">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Requêtes Neo4j d'analyse</h5>
+    </div>
+    <div class="card-body">
+        <div id="queryProgress">
+            <!-- Queries will be added here progressively -->
+        </div>
+    </div>
+</div>
+
+<!-- Graph and Table Layout -->
+<div class="row">
+    <!-- Graph Visualization -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-project-diagram me-2"></i>Réseau des transactions suspectes</h5>
+            </div>
+            <div class="card-body">
+                <div id="graph-container" style="height: 500px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                        <div class="text-center">
+                            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                            <p>Cliquez sur "Analyser le réseau" pour visualiser les transactions suspectes</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Analysis Summary -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-chart-bar me-2"></i>Analyse des risques</h5>
+            </div>
+            <div class="card-body" id="analysisSummary">
+                <div class="text-center text-muted">
+                    <i class="fas fa-chart-bar fa-2x mb-3"></i>
+                    <p>Les statistiques d'analyse apparaîtront ici</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0"><i class="fas fa-palette me-2"></i>Légende</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #4CAF50; border-radius: 50%;"></div>
+                    <small>Personne (faible risque)</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #FF5722; border-radius: 50%;"></div>
+                    <small>Personne (haut risque)</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #2196F3; border-radius: 50%;"></div>
+                    <small>Compte bancaire</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 20px; background-color: #FF9800; border-radius: 50%;"></div>
+                    <small>Transaction suspecte</small>
+                </div>
+                <hr>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 3px; background-color: #f44336;"></div>
+                    <small>Transaction très suspecte (>0.9)</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <div class="me-2" style="width: 20px; height: 2px; background-color: #ff9800;"></div>
+                    <small>Transaction suspecte (0.7-0.9)</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="me-2" style="width: 20px; height: 1px; background-color: #ffc107;"></div>
+                    <small>Transaction modérée (0.5-0.7)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
 <div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>Liste des transactions suspectes</h5>
+    </div>
     <div class="card-body">
         {% if transactions %}
             <div class="table-responsive">
@@ -67,4 +229,645 @@ RETURN sender.name AS from, receiver.name AS to, t.amount AS amount,
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+let currentGraph = null;
+let svg = null;
+let scene3D, camera3D, renderer3D, controls3D;
+let nodes3D = [], links3D = [];
+let currentMode3D = '3d';
+let animationId3D;
+let autoRotate3D = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const resetAnalysisBtn = document.getElementById('resetAnalysisBtn');
+    const queryCard = document.getElementById('queryCard');
+    const queryProgress = document.getElementById('queryProgress');
+    const analysisSummary = document.getElementById('analysisSummary');
+    const thresholdSelect = document.getElementById('thresholdSelect');
+    const limitSelect = document.getElementById('limitSelect');
+    const analysisType = document.getElementById('analysisType');
+    
+    // 3D Controls
+    const viewMode3D = document.getElementById('viewMode3D');
+    const controls3DCard = document.getElementById('controls3D');
+    const layoutType3D = document.getElementById('layoutType3D');
+    const nodeSize3D = document.getElementById('nodeSize3D');
+    const autoRotate3DBtn = document.getElementById('autoRotate3D');
+    const resetCamera3DBtn = document.getElementById('resetCamera3D');
+
+    // View mode change
+    viewMode3D.addEventListener('change', function() {
+        currentMode3D = this.value;
+        if (this.value === '3d') {
+            controls3DCard.style.display = 'block';
+        } else {
+            controls3DCard.style.display = 'none';
+        }
+        
+        if (currentGraph) {
+            if (currentMode3D === '3d') {
+                createSuspicious3DGraph(currentGraph);
+            } else {
+                createSuspiciousGraph(currentGraph);
+            }
+        }
+    });
+
+    // 3D Controls
+    layoutType3D.addEventListener('change', function() {
+        if (currentGraph && currentMode3D === '3d') {
+            applySuspicious3DLayout(this.value);
+        }
+    });
+
+    nodeSize3D.addEventListener('input', function() {
+        if (currentMode3D === '3d' && nodes3D.length > 0) {
+            updateSuspicious3DNodeSizes(parseFloat(this.value));
+        }
+    });
+
+    autoRotate3DBtn.addEventListener('click', function() {
+        autoRotate3D = !autoRotate3D;
+        if (controls3D) {
+            controls3D.autoRotate = autoRotate3D;
+        }
+        this.classList.toggle('btn-outline-primary');
+        this.classList.toggle('btn-primary');
+    });
+
+    resetCamera3DBtn.addEventListener('click', function() {
+        if (camera3D && controls3D) {
+            camera3D.position.set(0, 0, 500);
+            controls3D.reset();
+        }
+    });
+
+    // Analyze button click
+    analyzeBtn.addEventListener('click', function() {
+        const threshold = thresholdSelect.value;
+        const limit = limitSelect.value;
+        const type = analysisType.value;
+        
+        analyzeSuspiciousNetwork(threshold, limit, type);
+        resetAnalysisBtn.disabled = false;
+        
+        if (viewMode3D.value === '3d') {
+            controls3DCard.style.display = 'block';
+        }
+    });
+
+    // Reset button click
+    resetAnalysisBtn.addEventListener('click', function() {
+        resetAnalysisBtn.disabled = true;
+        queryCard.style.display = 'none';
+        controls3DCard.style.display = 'none';
+        queryProgress.innerHTML = '';
+        resetGraph();
+        resetSummary();
+    });
+
+    function resetGraph() {
+        const container = document.getElementById('graph-container');
+        
+        // Clean up 3D scene
+        if (animationId3D) {
+            cancelAnimationFrame(animationId3D);
+        }
+        if (renderer3D) {
+            renderer3D.dispose();
+            if (container.contains(renderer3D.domElement)) {
+                container.removeChild(renderer3D.domElement);
+            }
+        }
+        
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <p>Cliquez sur "Analyser le réseau" pour visualiser les transactions suspectes</p>
+                </div>
+            </div>
+        `;
+        
+        currentGraph = null;
+        nodes3D = [];
+        links3D = [];
+    }
+
+    function resetSummary() {
+        analysisSummary.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-chart-bar fa-2x mb-3"></i>
+                <p>Les statistiques d'analyse apparaîtront ici</p>
+            </div>
+        `;
+    }
+
+    function addQuery(title, query, description) {
+        const queryDiv = document.createElement('div');
+        queryDiv.className = 'mb-3 p-3 border rounded';
+        queryDiv.innerHTML = `
+            <h6><i class="fas fa-play me-2"></i>${title}</h6>
+            <pre class="mb-2"><code>${query}</code></pre>
+            <small class="text-muted">${description}</small>
+        `;
+        queryProgress.appendChild(queryDiv);
+        
+        // Scroll to the new query
+        queryDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function analyzeSuspiciousNetwork(threshold, limit, type) {
+        queryCard.style.display = 'block';
+        queryProgress.innerHTML = '';
+        
+        try {
+            // Step 1: Find suspicious transactions
+            addQuery(
+                'Étape 1: Identifier les transactions suspectes',
+                `MATCH (t:Transaction)
+WHERE t.suspicious_score > ${threshold}
+RETURN t
+ORDER BY t.suspicious_score DESC
+LIMIT ${limit}`,
+                `Trouve les ${limit} transactions les plus suspectes avec un score > ${threshold}.`
+            );
+            
+            await sleep(1000);
+            
+            // Step 2: Get network context
+            addQuery(
+                'Étape 2: Construire le réseau de relations',
+                `MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
+WHERE t.suspicious_score > ${threshold}
+RETURN sender, s, t, r, receiver
+ORDER BY t.suspicious_score DESC
+LIMIT ${limit}`,
+                'Récupère le contexte complet des transactions suspectes avec les personnes et comptes impliqués.'
+            );
+            
+            await sleep(1000);
+            
+            // Step 3: Analyze patterns based on type
+            if (type === 'patterns') {
+                addQuery(
+                    'Étape 3: Analyser les patterns suspects',
+                    `MATCH (p1:Person)-[:OWNS]->(:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(:BankAccount)<-[:OWNS]-(p2:Person)
+WHERE t.suspicious_score > ${threshold}
+RETURN p1.name AS sender, p2.name AS receiver, 
+       count(t) AS transaction_count,
+       sum(t.amount) AS total_amount,
+       avg(t.suspicious_score) AS avg_suspicion
+ORDER BY avg_suspicion DESC, transaction_count DESC
+LIMIT 10`,
+                    'Identifie les patterns de transactions répétées entre les mêmes personnes.'
+                );
+            } else if (type === 'clusters') {
+                addQuery(
+                    'Étape 3: Identifier les clusters de risque',
+                    `MATCH (p:Person)-[:OWNS]->(:BankAccount)-[:SENDS]->(t:Transaction)
+WHERE t.suspicious_score > ${threshold}
+RETURN p.name AS person,
+       p.risk_score AS personal_risk,
+       count(t) AS suspicious_transactions,
+       avg(t.suspicious_score) AS avg_transaction_suspicion,
+       sum(t.amount) AS total_suspicious_amount
+ORDER BY personal_risk DESC, avg_transaction_suspicion DESC
+LIMIT 10`,
+                    'Groupe les personnes par niveau de risque et activité suspecte.'
+                );
+            } else {
+                addQuery(
+                    'Étape 3: Analyser le réseau complet',
+                    `MATCH path = (p1:Person)-[:OWNS]->(:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(:BankAccount)<-[:OWNS]-(p2:Person)
+WHERE t.suspicious_score > ${threshold}
+WITH p1, p2, count(path) AS connections
+WHERE connections > 1
+RETURN p1.name AS person1, p2.name AS person2, connections
+ORDER BY connections DESC
+LIMIT 20`,
+                    'Identifie les connexions multiples entre personnes via des transactions suspectes.'
+                );
+            }
+            
+            await sleep(1000);
+            
+            // Step 4: Risk assessment
+            addQuery(
+                'Étape 4: Évaluation globale des risques',
+                `MATCH (t:Transaction)
+WHERE t.suspicious_score > ${threshold}
+WITH count(t) AS suspicious_count,
+     avg(t.suspicious_score) AS avg_score,
+     sum(t.amount) AS total_amount,
+     max(t.suspicious_score) AS max_score
+MATCH (p:Person)-[:OWNS]->(:BankAccount)-[:SENDS]->(st:Transaction)
+WHERE st.suspicious_score > ${threshold}
+RETURN suspicious_count,
+       avg_score,
+       total_amount,
+       max_score,
+       count(DISTINCT p) AS involved_persons`,
+                'Calcule les statistiques globales de risque pour cette analyse.'
+            );
+            
+            // Fetch actual data
+            const response = await fetch(`/suspicious-network-data/?threshold=${threshold}&limit=${limit}&type=${type}`);
+            const data = await response.json();
+            
+            // Store current graph data
+            currentGraph = data;
+            
+            // Create graph based on current mode
+            if (currentMode3D === '3d') {
+                createSuspicious3DGraph(data);
+            } else {
+                createSuspiciousGraph(data);
+            }
+            
+            updateAnalysisSummary(data, threshold, limit);
+            
+        } catch (error) {
+            console.error('Error analyzing suspicious network:', error);
+            alert('Erreur lors de l\'analyse du réseau suspect');
+        }
+    }
+
+    function createSuspiciousGraph(data) {
+        // Clear previous graph
+        const container = document.getElementById('graph-container');
+        container.innerHTML = '';
+        
+        const width = container.clientWidth;
+        const height = 500;
+        
+        svg = d3.select('#graph-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        // Create force simulation
+        const simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(80))
+            .force('charge', d3.forceManyBody().strength(-400))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(20));
+        
+        // Create links with varying thickness based on suspicion
+        const link = svg.append('g')
+            .selectAll('line')
+            .data(data.links)
+            .enter().append('line')
+            .attr('stroke', d => {
+                if (d.suspicious_score >= 0.9) return '#f44336';
+                if (d.suspicious_score >= 0.7) return '#ff9800';
+                return '#ffc107';
+            })
+            .attr('stroke-width', d => {
+                if (d.suspicious_score >= 0.9) return 4;
+                if (d.suspicious_score >= 0.7) return 3;
+                return 2;
+            })
+            .attr('opacity', 0.8);
+        
+        // Create nodes with risk-based coloring
+        const node = svg.append('g')
+            .selectAll('circle')
+            .data(data.nodes)
+            .enter().append('circle')
+            .attr('r', d => {
+                switch(d.type) {
+                    case 'Person': return d.risk_score > 0.7 ? 18 : 15;
+                    case 'BankAccount': return 12;
+                    case 'Transaction': return 8 + (d.suspicious_score * 5);
+                    default: return 10;
+                }
+            })
+            .attr('fill', d => {
+                switch(d.type) {
+                    case 'Person': return d.risk_score > 0.7 ? '#FF5722' : '#4CAF50';
+                    case 'BankAccount': return '#2196F3';
+                    case 'Transaction': return '#FF9800';
+                    default: return '#999';
+                }
+            })
+            .attr('stroke', d => d.type === 'Transaction' && d.suspicious_score > 0.9 ? '#d32f2f' : 'none')
+            .attr('stroke-width', 2)
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+        
+        // Add labels
+        const label = svg.append('g')
+            .selectAll('text')
+            .data(data.nodes)
+            .enter().append('text')
+            .text(d => d.label)
+            .attr('font-size', '11px')
+            .attr('font-weight', d => d.type === 'Person' && d.risk_score > 0.7 ? 'bold' : 'normal')
+            .attr('dx', 20)
+            .attr('dy', 5);
+        
+        // Add tooltips
+        node.append('title')
+            .text(d => `${d.type}: ${d.label}\n${d.details || ''}`);
+        
+        // Update positions on simulation tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            node
+                .attr('cx', d => d.x)
+                .attr('cy', d => d.y);
+            
+            label
+                .attr('x', d => d.x)
+                .attr('y', d => d.y);
+        });
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+    }
+
+    function createSuspicious3DGraph(data) {
+        const container = document.getElementById('graph-container');
+        container.innerHTML = '';
+        
+        const width = container.clientWidth;
+        const height = 500;
+        
+        // Initialize Three.js scene
+        scene3D = new THREE.Scene();
+        scene3D.background = new THREE.Color(0xf8f9fa);
+        
+        camera3D = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
+        camera3D.position.set(0, 0, 500);
+        
+        renderer3D = new THREE.WebGLRenderer({ antialias: true });
+        renderer3D.setSize(width, height);
+        container.appendChild(renderer3D.domElement);
+        
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene3D.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(100, 100, 50);
+        scene3D.add(directionalLight);
+        
+        // Initialize controls
+        controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+        controls3D.enableDamping = true;
+        controls3D.dampingFactor = 0.05;
+        controls3D.autoRotate = autoRotate3D;
+        
+        // Create 3D nodes and links
+        createSuspicious3DNodes(data.nodes);
+        createSuspicious3DLinks(data.links);
+        
+        // Apply initial layout
+        applySuspicious3DLayout(layoutType3D.value);
+        
+        // Start animation loop
+        animateSuspicious3D();
+    }
+
+    function createSuspicious3DNodes(nodes) {
+        nodes3D = [];
+        
+        nodes.forEach(node => {
+            let geometry, material;
+            
+            switch(node.type) {
+                case 'Person':
+                    geometry = new THREE.SphereGeometry(15, 16, 16);
+                    material = new THREE.MeshLambertMaterial({ 
+                        color: node.risk_score > 0.7 ? 0xFF5722 : 0x4CAF50 
+                    });
+                    break;
+                case 'BankAccount':
+                    geometry = new THREE.BoxGeometry(20, 20, 20);
+                    material = new THREE.MeshLambertMaterial({ color: 0x2196F3 });
+                    break;
+                case 'Transaction':
+                    const size = 8 + (node.suspicious_score * 10);
+                    geometry = new THREE.OctahedronGeometry(size);
+                    material = new THREE.MeshLambertMaterial({ color: 0xFF9800 });
+                    break;
+                default:
+                    geometry = new THREE.SphereGeometry(10, 8, 8);
+                    material = new THREE.MeshLambertMaterial({ color: 0x999999 });
+            }
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.userData = node;
+            
+            scene3D.add(mesh);
+            nodes3D.push(mesh);
+        });
+    }
+
+    function createSuspicious3DLinks(links) {
+        links3D = [];
+        
+        links.forEach(link => {
+            const sourceNode = nodes3D.find(n => n.userData.id === link.source.id || n.userData.id === link.source);
+            const targetNode = nodes3D.find(n => n.userData.id === link.target.id || n.userData.id === link.target);
+            
+            if (sourceNode && targetNode) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array([
+                    sourceNode.position.x, sourceNode.position.y, sourceNode.position.z,
+                    targetNode.position.x, targetNode.position.y, targetNode.position.z
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                let color = 0x999999;
+                if (link.suspicious_score >= 0.9) color = 0xf44336;
+                else if (link.suspicious_score >= 0.7) color = 0xff9800;
+                else if (link.suspicious_score >= 0.5) color = 0xffc107;
+                
+                const material = new THREE.LineBasicMaterial({ color: color });
+                const line = new THREE.Line(geometry, material);
+                line.userData = { source: sourceNode, target: targetNode };
+                
+                scene3D.add(line);
+                links3D.push(line);
+            }
+        });
+    }
+
+    function applySuspicious3DLayout(layoutType) {
+        if (!nodes3D.length) return;
+        
+        const nodeCount = nodes3D.length;
+        
+        switch(layoutType) {
+            case 'circular':
+                nodes3D.forEach((node, i) => {
+                    const angle = (i / nodeCount) * Math.PI * 2;
+                    const radius = 200;
+                    node.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        0
+                    );
+                });
+                break;
+                
+            case 'sphere':
+                nodes3D.forEach((node, i) => {
+                    const phi = Math.acos(-1 + (2 * i) / nodeCount);
+                    const theta = Math.sqrt(nodeCount * Math.PI) * phi;
+                    const radius = 200;
+                    node.position.set(
+                        radius * Math.cos(theta) * Math.sin(phi),
+                        radius * Math.sin(theta) * Math.sin(phi),
+                        radius * Math.cos(phi)
+                    );
+                });
+                break;
+                
+            default: // force-directed
+                nodes3D.forEach(node => {
+                    node.position.set(
+                        (Math.random() - 0.5) * 400,
+                        (Math.random() - 0.5) * 400,
+                        (Math.random() - 0.5) * 400
+                    );
+                });
+        }
+        
+        // Update link positions
+        updateSuspicious3DLinkPositions();
+    }
+
+    function updateSuspicious3DLinkPositions() {
+        links3D.forEach(link => {
+            const positions = link.geometry.attributes.position.array;
+            positions[0] = link.userData.source.position.x;
+            positions[1] = link.userData.source.position.y;
+            positions[2] = link.userData.source.position.z;
+            positions[3] = link.userData.target.position.x;
+            positions[4] = link.userData.target.position.y;
+            positions[5] = link.userData.target.position.z;
+            link.geometry.attributes.position.needsUpdate = true;
+        });
+    }
+
+    function updateSuspicious3DNodeSizes(scale) {
+        nodes3D.forEach(node => {
+            node.scale.setScalar(scale);
+        });
+    }
+
+    function animateSuspicious3D() {
+        animationId3D = requestAnimationFrame(animateSuspicious3D);
+        
+        controls3D.update();
+        renderer3D.render(scene3D, camera3D);
+    }
+
+    function updateAnalysisSummary(data, threshold, limit) {
+        const nodes = data.nodes;
+        const links = data.links;
+        
+        const persons = nodes.filter(n => n.type === 'Person');
+        const transactions = nodes.filter(n => n.type === 'Transaction');
+        const highRiskPersons = persons.filter(p => p.risk_score > 0.7).length;
+        const criticalTransactions = transactions.filter(t => t.suspicious_score > 0.9).length;
+        
+        const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const avgSuspicion = transactions.length > 0 ? 
+            transactions.reduce((sum, t) => sum + t.suspicious_score, 0) / transactions.length : 0;
+        
+        analysisSummary.innerHTML = `
+            <h6><i class="fas fa-exclamation-triangle me-2"></i>Analyse de Risque</h6>
+            <hr>
+            <div class="mb-2">
+                <i class="fas fa-filter me-2"></i>
+                <strong>Seuil:</strong> ${threshold}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-users me-2"></i>
+                <strong>Personnes impliquées:</strong> ${persons.length}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-user-times me-2"></i>
+                <strong>Personnes à haut risque:</strong> 
+                <span class="badge ${highRiskPersons > 0 ? 'bg-danger' : 'bg-success'}">${highRiskPersons}</span>
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-exchange-alt me-2"></i>
+                <strong>Transactions suspectes:</strong> ${transactions.length}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-fire me-2"></i>
+                <strong>Transactions critiques:</strong> 
+                <span class="badge ${criticalTransactions > 0 ? 'bg-danger' : 'bg-warning'}">${criticalTransactions}</span>
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-dollar-sign me-2"></i>
+                <strong>Montant total:</strong> $${totalAmount.toLocaleString()}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-chart-line me-2"></i>
+                <strong>Suspicion moyenne:</strong> ${avgSuspicion.toFixed(2)}
+            </div>
+            <hr>
+            <div class="mb-2">
+                <i class="fas fa-project-diagram me-2"></i>
+                <strong>Nœuds du réseau:</strong> ${nodes.length}
+            </div>
+            <div class="mb-2">
+                <i class="fas fa-link me-2"></i>
+                <strong>Connexions:</strong> ${links.length}
+            </div>
+        `;
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        if (renderer3D && camera3D) {
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth;
+            const height = 500;
+            
+            camera3D.aspect = width / height;
+            camera3D.updateProjectionMatrix();
+            renderer3D.setSize(width, height);
+        }
+    });
+});
+</script>
 {% endblock %} 

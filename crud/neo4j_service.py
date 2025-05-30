@@ -298,3 +298,245 @@ class Neo4jService:
                 transactions.append(transaction)
             return transactions 
         
+    def get_person_relations(self, person_id):
+        """Get all relations for a specific person for graph visualization"""
+        with self.driver.session() as session:
+            # Get the complete network around a person
+            result = session.run(
+                """
+                MATCH (p:Person {id: $person_id})
+                OPTIONAL MATCH (p)-[:OWNS]->(a:BankAccount)
+                OPTIONAL MATCH (a)-[:SENDS]->(t:Transaction)
+                OPTIONAL MATCH (t)-[:TO]->(a2:BankAccount)
+                OPTIONAL MATCH (a2)<-[:OWNS]-(p2:Person)
+                OPTIONAL MATCH (p)-[:WORKS_FOR]->(c:Company)
+                RETURN p, a, t, a2, p2, c
+                """,
+                person_id=person_id
+            )
+            
+            nodes = {}
+            links = []
+            
+            for record in result:
+                # Add person node
+                if record['p']:
+                    person = dict(record['p'])
+                    nodes[person['id']] = {
+                        'id': person['id'],
+                        'type': 'Person',
+                        'label': person['name'],
+                        'details': f"Risk: {person.get('risk_score', 'N/A')}\nNationality: {person.get('nationality', 'N/A')}",
+                        'risk_score': person.get('risk_score', 0)
+                    }
+                
+                # Add bank account node
+                if record['a']:
+                    account = dict(record['a'])
+                    nodes[account['id']] = {
+                        'id': account['id'],
+                        'type': 'BankAccount',
+                        'label': f"{account['bank_name']}\n{account['account_number'][:8]}...",
+                        'details': f"Bank: {account['bank_name']}\nCountry: {account['country']}\nCurrency: {account['currency']}"
+                    }
+                    
+                    # Add OWNS relationship
+                    if record['p']:
+                        links.append({
+                            'source': person['id'],
+                            'target': account['id'],
+                            'type': 'OWNS'
+                        })
+                
+                # Add transaction node
+                if record['t']:
+                    transaction = dict(record['t'])
+                    transaction_date = str(transaction['date']) if transaction.get('date') else 'N/A'
+                    nodes[transaction['id']] = {
+                        'id': transaction['id'],
+                        'type': 'Transaction',
+                        'label': f"${transaction['amount']}\n{transaction_date}",
+                        'details': f"Amount: ${transaction['amount']}\nDate: {transaction_date}\nSuspicious: {transaction.get('suspicious_score', 'N/A')}",
+                        'suspicious_score': transaction.get('suspicious_score', 0)
+                    }
+                    
+                    # Add SENDS relationship
+                    if record['a']:
+                        links.append({
+                            'source': account['id'],
+                            'target': transaction['id'],
+                            'type': 'SENDS'
+                        })
+                
+                # Add receiving bank account
+                if record['a2'] and record['a2']['id'] != record['a']['id'] if record['a'] else True:
+                    account2 = dict(record['a2'])
+                    nodes[account2['id']] = {
+                        'id': account2['id'],
+                        'type': 'BankAccount',
+                        'label': f"{account2['bank_name']}\n{account2['account_number'][:8]}...",
+                        'details': f"Bank: {account2['bank_name']}\nCountry: {account2['country']}\nCurrency: {account2['currency']}"
+                    }
+                    
+                    # Add TO relationship
+                    if record['t']:
+                        links.append({
+                            'source': transaction['id'],
+                            'target': account2['id'],
+                            'type': 'TO'
+                        })
+                
+                # Add receiving person
+                if record['p2'] and record['p2']['id'] != person_id:
+                    person2 = dict(record['p2'])
+                    nodes[person2['id']] = {
+                        'id': person2['id'],
+                        'type': 'Person',
+                        'label': person2['name'],
+                        'details': f"Risk: {person2.get('risk_score', 'N/A')}\nNationality: {person2.get('nationality', 'N/A')}",
+                        'risk_score': person2.get('risk_score', 0)
+                    }
+                    
+                    # Add OWNS relationship for receiving person
+                    if record['a2']:
+                        links.append({
+                            'source': person2['id'],
+                            'target': account2['id'],
+                            'type': 'OWNS'
+                        })
+                
+                # Add company node
+                if record['c']:
+                    company = dict(record['c'])
+                    nodes[company['id']] = {
+                        'id': company['id'],
+                        'type': 'Company',
+                        'label': company['name'],
+                        'details': f"Type: {company.get('type', 'N/A')}\nCountry: {company.get('country', 'N/A')}\nRisk: {company.get('risk_score', 'N/A')}"
+                    }
+                    
+                    # Add WORKS_FOR relationship
+                    links.append({
+                        'source': person['id'],
+                        'target': company['id'],
+                        'type': 'WORKS_FOR'
+                    })
+            
+            return {
+                'nodes': list(nodes.values()),
+                'links': links
+            }
+
+    def get_suspicious_network(self, threshold=0.8, limit=20, analysis_type='network'):
+        """Get suspicious transactions network for graph visualization"""
+        with self.driver.session() as session:
+            # Get suspicious transactions with full context
+            result = session.run(
+                """
+                MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
+                WHERE t.suspicious_score > $threshold
+                RETURN sender, s, t, r, receiver
+                ORDER BY t.suspicious_score DESC
+                LIMIT $limit
+                """,
+                threshold=float(threshold), limit=int(limit)
+            )
+            
+            nodes = {}
+            links = []
+            
+            for record in result:
+                # Add sender person
+                if record['sender']:
+                    sender = dict(record['sender'])
+                    nodes[sender['id']] = {
+                        'id': sender['id'],
+                        'type': 'Person',
+                        'label': sender['name'],
+                        'details': f"Risk: {sender.get('risk_score', 'N/A')}\nNationality: {sender.get('nationality', 'N/A')}",
+                        'risk_score': sender.get('risk_score', 0)
+                    }
+                
+                # Add sender bank account
+                if record['s']:
+                    s_account = dict(record['s'])
+                    nodes[s_account['id']] = {
+                        'id': s_account['id'],
+                        'type': 'BankAccount',
+                        'label': f"{s_account['bank_name']}\n{s_account['account_number'][:8]}...",
+                        'details': f"Bank: {s_account['bank_name']}\nCountry: {s_account['country']}\nCurrency: {s_account['currency']}"
+                    }
+                    
+                    # Add OWNS relationship (sender -> account)
+                    if record['sender']:
+                        links.append({
+                            'source': sender['id'],
+                            'target': s_account['id'],
+                            'type': 'OWNS'
+                        })
+                
+                # Add transaction
+                if record['t']:
+                    transaction = dict(record['t'])
+                    transaction_date = str(transaction['date']) if transaction.get('date') else 'N/A'
+                    nodes[transaction['id']] = {
+                        'id': transaction['id'],
+                        'type': 'Transaction',
+                        'label': f"${transaction['amount']}\n{transaction_date}",
+                        'details': f"Amount: ${transaction['amount']}\nDate: {transaction_date}\nSuspicious: {transaction.get('suspicious_score', 'N/A')}",
+                        'suspicious_score': transaction.get('suspicious_score', 0),
+                        'amount': transaction.get('amount', 0)
+                    }
+                    
+                    # Add SENDS relationship (account -> transaction)
+                    if record['s']:
+                        links.append({
+                            'source': s_account['id'],
+                            'target': transaction['id'],
+                            'type': 'SENDS',
+                            'suspicious_score': transaction.get('suspicious_score', 0)
+                        })
+                
+                # Add receiver bank account
+                if record['r']:
+                    r_account = dict(record['r'])
+                    nodes[r_account['id']] = {
+                        'id': r_account['id'],
+                        'type': 'BankAccount',
+                        'label': f"{r_account['bank_name']}\n{r_account['account_number'][:8]}...",
+                        'details': f"Bank: {r_account['bank_name']}\nCountry: {r_account['country']}\nCurrency: {r_account['currency']}"
+                    }
+                    
+                    # Add TO relationship (transaction -> account)
+                    if record['t']:
+                        links.append({
+                            'source': transaction['id'],
+                            'target': r_account['id'],
+                            'type': 'TO',
+                            'suspicious_score': transaction.get('suspicious_score', 0)
+                        })
+                
+                # Add receiver person
+                if record['receiver']:
+                    receiver = dict(record['receiver'])
+                    nodes[receiver['id']] = {
+                        'id': receiver['id'],
+                        'type': 'Person',
+                        'label': receiver['name'],
+                        'details': f"Risk: {receiver.get('risk_score', 'N/A')}\nNationality: {receiver.get('nationality', 'N/A')}",
+                        'risk_score': receiver.get('risk_score', 0)
+                    }
+                    
+                    # Add OWNS relationship (receiver -> account)
+                    if record['r']:
+                        links.append({
+                            'source': receiver['id'],
+                            'target': r_account['id'],
+                            'type': 'OWNS'
+                        })
+            
+            return {
+                'nodes': list(nodes.values()),
+                'links': links
+            }
+        

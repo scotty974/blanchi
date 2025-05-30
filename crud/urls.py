@@ -34,4 +34,11 @@ urlpatterns = [
     
     # Neo4j Queries Reference
     path('neo4j-queries/', views.neo4j_queries, name='neo4j_queries'),
+    
+    # Person Relations
+    path('person-relations/', views.person_relations, name='person_relations'),
+    path('person-relations-data/<str:person_id>/', views.person_relations_data, name='person_relations_data'),
+    
+    # Suspicious Network API
+    path('suspicious-network-data/', views.suspicious_network_data, name='suspicious_network_data'),
 ] 
