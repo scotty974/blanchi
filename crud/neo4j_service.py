@@ -272,4 +272,29 @@ class Neo4jService:
                 id=id
             )
             record = result.single()
-            return record['deleted'] > 0 if record else False 
+            return record['deleted'] > 0 if record else False
+
+    def get_suspicious_transactions(self, threshold=0.8):
+        with self.driver.session() as session:
+            result = session.run(
+                """
+                MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
+                WHERE t.suspicious_score > $threshold
+                RETURN sender.name AS from, receiver.name AS to, t.amount AS amount, 
+                       t.suspicious_score AS score, t.date AS date, t.currency AS currency
+                """,
+                threshold=float(threshold)
+            )
+            transactions = []
+            for record in result:
+                transaction = {
+                    'from': record['from'],
+                    'to': record['to'],
+                    'amount': record['amount'],
+                    'score': record['score'],
+                    'date': str(record['date']) if record['date'] else None,
+                    'currency': record['currency']
+                }
+                transactions.append(transaction)
+            return transactions 
+        

@@ -28,4 +28,7 @@ urlpatterns = [
     path('transactions/create/', views.transaction_create, name='transaction_create'),
     path('transactions/<str:transaction_id>/edit/', views.transaction_edit, name='transaction_edit'),
     path('transactions/<str:transaction_id>/delete/', views.transaction_delete, name='transaction_delete'),
+    
+    # Suspicious Transactions
+    path('suspicious-transactions/', views.suspicious_transactions, name='suspicious_transactions'),
 ] 

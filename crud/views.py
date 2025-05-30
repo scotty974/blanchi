@@ -12,12 +12,13 @@ def dashboard(request):
         companies = neo4j.get_all_companies()
         bank_accounts = neo4j.get_all_bank_accounts()
         transactions = neo4j.get_all_transactions()
-    
+        suspicious_transactions = neo4j.get_suspicious_transactions()
     context = {
         'persons_count': len(persons),
         'companies_count': len(companies),
         'bank_accounts_count': len(bank_accounts),
         'transactions_count': len(transactions),
+        'suspicious_transactions': suspicious_transactions
     }
     return render(request, 'crud/dashboard.html', context)
 
@@ -272,3 +273,11 @@ def transaction_delete(request, transaction_id):
             else:
                 messages.error(request, 'Failed to delete transaction.')
     return redirect('transaction_list')
+
+# Suspicious Transactions
+def suspicious_transactions(request):
+    with Neo4jService() as neo4j:
+        transactions = neo4j.get_suspicious_transactions()
+    return render(request, 'crud/suspicious_transactions.html', {'transactions': transactions})
+
+

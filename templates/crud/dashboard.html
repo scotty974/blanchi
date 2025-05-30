@@ -150,4 +150,52 @@
         </div>
     </div>
 </div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Suspicious Transactions</h5>
+            </div>
+            <div class="card-body">
+                {% if suspicious_transactions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Amount</th>
+                                <th>Currency</th>
+                                <th>Date</th>
+                                <th>Suspicious Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in suspicious_transactions %}
+                            <tr>
+                                <td>{{ transaction.from }}</td>
+                                <td>{{ transaction.to }}</td>
+                                <td>{{ transaction.amount }}</td>
+                                <td>{{ transaction.currency }}</td>
+                                <td>{{ transaction.date }}</td>
+                                <td>
+                                    <span class="badge {% if transaction.score > 0.9 %}bg-danger{% elif transaction.score > 0.8 %}bg-warning{% else %}bg-info{% endif %}">
+                                        {{ transaction.score|floatformat:2 }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No suspicious transactions found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %} 
