@@ -12,6 +12,108 @@
     </div>
 </div>
 
+<!-- Neo4j Queries Display -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Queries</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="transactionsAccordion">
+            <!-- Read All Transactions -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#readTransactionsQuery">
+                        <i class="fas fa-eye me-2"></i>Lire toutes les transactions
+                    </button>
+                </h2>
+                <div id="readTransactionsQuery" class="accordion-collapse collapse" data-bs-parent="#transactionsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (t:Transaction) RETURN t</code></pre>
+                        <small class="text-muted">Récupère toutes les transactions de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Transaction -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#createTransactionQuery">
+                        <i class="fas fa-plus me-2"></i>Créer une transaction
+                    </button>
+                </h2>
+                <div id="createTransactionQuery" class="accordion-collapse collapse" data-bs-parent="#transactionsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">CREATE (t:Transaction {
+    id: $id,
+    amount: $amount,
+    date: date($date),
+    currency: $currency,
+    suspicious_score: $suspicious_score
+})
+RETURN t</code></pre>
+                        <small class="text-muted">Crée une nouvelle transaction avec les propriétés spécifiées. La date est convertie au format Neo4j.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Update Transaction -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateTransactionQuery">
+                        <i class="fas fa-edit me-2"></i>Modifier une transaction
+                    </button>
+                </h2>
+                <div id="updateTransactionQuery" class="accordion-collapse collapse" data-bs-parent="#transactionsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (t:Transaction {id: $id})
+SET t.amount = $amount, 
+    t.date = date($date), 
+    t.currency = $currency, 
+    t.suspicious_score = $suspicious_score
+RETURN t</code></pre>
+                        <small class="text-muted">Met à jour les propriétés d'une transaction existante.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Transaction -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteTransactionQuery">
+                        <i class="fas fa-trash me-2"></i>Supprimer une transaction
+                    </button>
+                </h2>
+                <div id="deleteTransactionQuery" class="accordion-collapse collapse" data-bs-parent="#transactionsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (t:Transaction {id: $id}) 
+DELETE t 
+RETURN count(t) as deleted</code></pre>
+                        <small class="text-muted">Supprime une transaction de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Find Suspicious Transactions -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#suspiciousQuery">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Transactions suspectes
+                    </button>
+                </h2>
+                <div id="suspiciousQuery" class="accordion-collapse collapse" data-bs-parent="#transactionsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (t:Transaction)
+WHERE t.suspicious_score > 0.7
+RETURN t
+ORDER BY t.suspicious_score DESC</code></pre>
+                        <small class="text-muted">Trouve toutes les transactions avec un score de suspicion élevé (> 0.7).</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {% if transactions %}

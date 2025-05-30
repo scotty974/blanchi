@@ -12,6 +12,90 @@
     </div>
 </div>
 
+<!-- Neo4j Queries Display -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Queries</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="queriesAccordion">
+            <!-- Read All Persons -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#readQuery">
+                        <i class="fas fa-eye me-2"></i>Lire toutes les personnes
+                    </button>
+                </h2>
+                <div id="readQuery" class="accordion-collapse collapse" data-bs-parent="#queriesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (p:Person) RETURN p</code></pre>
+                        <small class="text-muted">Récupère toutes les personnes de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Person -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#createQuery">
+                        <i class="fas fa-plus me-2"></i>Créer une personne
+                    </button>
+                </h2>
+                <div id="createQuery" class="accordion-collapse collapse" data-bs-parent="#queriesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">CREATE (p:Person {
+    id: $id,
+    name: $name,
+    national_id: $national_id,
+    nationality: $nationality,
+    risk_score: $risk_score
+})
+RETURN p</code></pre>
+                        <small class="text-muted">Crée une nouvelle personne avec les propriétés spécifiées.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Update Person -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateQuery">
+                        <i class="fas fa-edit me-2"></i>Modifier une personne
+                    </button>
+                </h2>
+                <div id="updateQuery" class="accordion-collapse collapse" data-bs-parent="#queriesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (p:Person {id: $id})
+SET p.name = $name, 
+    p.national_id = $national_id, 
+    p.nationality = $nationality, 
+    p.risk_score = $risk_score
+RETURN p</code></pre>
+                        <small class="text-muted">Met à jour les propriétés d'une personne existante.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Person -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteQuery">
+                        <i class="fas fa-trash me-2"></i>Supprimer une personne
+                    </button>
+                </h2>
+                <div id="deleteQuery" class="accordion-collapse collapse" data-bs-parent="#queriesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (p:Person {id: $id}) 
+DELETE p 
+RETURN count(p) as deleted</code></pre>
+                        <small class="text-muted">Supprime une personne de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {% if persons %}

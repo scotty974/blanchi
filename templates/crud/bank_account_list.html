@@ -12,6 +12,90 @@
     </div>
 </div>
 
+<!-- Neo4j Queries Display -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Queries</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="accountsAccordion">
+            <!-- Read All Bank Accounts -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#readAccountsQuery">
+                        <i class="fas fa-eye me-2"></i>Lire tous les comptes bancaires
+                    </button>
+                </h2>
+                <div id="readAccountsQuery" class="accordion-collapse collapse" data-bs-parent="#accountsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (a:BankAccount) RETURN a</code></pre>
+                        <small class="text-muted">Récupère tous les comptes bancaires de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Bank Account -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#createAccountQuery">
+                        <i class="fas fa-plus me-2"></i>Créer un compte bancaire
+                    </button>
+                </h2>
+                <div id="createAccountQuery" class="accordion-collapse collapse" data-bs-parent="#accountsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">CREATE (a:BankAccount {
+    id: $id,
+    account_number: $account_number,
+    bank_name: $bank_name,
+    country: $country,
+    currency: $currency
+})
+RETURN a</code></pre>
+                        <small class="text-muted">Crée un nouveau compte bancaire avec les propriétés spécifiées.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Update Bank Account -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateAccountQuery">
+                        <i class="fas fa-edit me-2"></i>Modifier un compte bancaire
+                    </button>
+                </h2>
+                <div id="updateAccountQuery" class="accordion-collapse collapse" data-bs-parent="#accountsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (a:BankAccount {id: $id})
+SET a.account_number = $account_number, 
+    a.bank_name = $bank_name, 
+    a.country = $country, 
+    a.currency = $currency
+RETURN a</code></pre>
+                        <small class="text-muted">Met à jour les propriétés d'un compte bancaire existant.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Bank Account -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteAccountQuery">
+                        <i class="fas fa-trash me-2"></i>Supprimer un compte bancaire
+                    </button>
+                </h2>
+                <div id="deleteAccountQuery" class="accordion-collapse collapse" data-bs-parent="#accountsAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (a:BankAccount {id: $id}) 
+DELETE a 
+RETURN count(a) as deleted</code></pre>
+                        <small class="text-muted">Supprime un compte bancaire de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {% if bank_accounts %}

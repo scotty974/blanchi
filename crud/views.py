@@ -280,4 +280,8 @@ def suspicious_transactions(request):
         transactions = neo4j.get_suspicious_transactions()
     return render(request, 'crud/suspicious_transactions.html', {'transactions': transactions})
 
+# Neo4j Queries Reference
+def neo4j_queries(request):
+    return render(request, 'crud/neo4j_queries.html')
+
 

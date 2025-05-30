@@ -1,0 +1,316 @@
+{% extends 'crud/base.html' %}
+
+{% block title %}Neo4j Queries Reference - Neo4j CRUD{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-code me-2"></i>Neo4j Cypher Queries Reference</h1>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Guide des requêtes Cypher</strong> - Cette page contient toutes les requêtes Neo4j utilisées dans l'application ainsi que des exemples avancés.
+        </div>
+    </div>
+</div>
+
+<!-- Basic CRUD Operations -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-database me-2"></i>Opérations CRUD de base</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="basicCrudAccordion">
+            <!-- Create Operations -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#createOps">
+                        <i class="fas fa-plus me-2"></i>Opérations CREATE
+                    </button>
+                </h2>
+                <div id="createOps" class="accordion-collapse collapse show" data-bs-parent="#basicCrudAccordion">
+                    <div class="accordion-body">
+                        <h6>Créer une personne :</h6>
+                        <pre><code>CREATE (p:Person {
+    id: 'P1',
+    name: 'John Doe',
+    national_id: '123-45-6789',
+                            nationality: 'USA',
+    risk_score: 0.3
+})
+RETURN p</code></pre>
+
+                        <h6>Créer une entreprise :</h6>
+                        <pre><code>CREATE (c:Company {
+    id: 'C1',
+    name: 'Tech Corp',
+    country: 'USA',
+    type: 'International',
+    risk_score: 0.2
+})
+RETURN c</code></pre>
+
+                        <h6>Créer un compte bancaire :</h6>
+                        <pre><code>CREATE (a:BankAccount {
+    id: 'A1',
+    account_number: 'US12345678901234567890',
+    bank_name: 'First National Bank',
+    country: 'USA',
+    currency: 'USD'
+})
+RETURN a</code></pre>
+
+                        <h6>Créer une transaction :</h6>
+                        <pre><code>CREATE (t:Transaction {
+    id: 'T1',
+    amount: 1000.00,
+    date: date('2024-01-15'),
+    currency: 'USD',
+    suspicious_score: 0.1
+})
+RETURN t</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Read Operations -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#readOps">
+                        <i class="fas fa-eye me-2"></i>Opérations READ
+                    </button>
+                </h2>
+                <div id="readOps" class="accordion-collapse collapse" data-bs-parent="#basicCrudAccordion">
+                    <div class="accordion-body">
+                        <h6>Lire toutes les entités :</h6>
+                        <pre><code>MATCH (p:Person) RETURN p
+MATCH (c:Company) RETURN c
+MATCH (a:BankAccount) RETURN a
+MATCH (t:Transaction) RETURN t</code></pre>
+
+                        <h6>Lire une entité spécifique :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'}) RETURN p
+MATCH (c:Company {id: 'C1'}) RETURN c</code></pre>
+
+                        <h6>Lire avec conditions :</h6>
+                        <pre><code>MATCH (p:Person)
+WHERE p.risk_score > 0.5
+RETURN p.name, p.risk_score
+ORDER BY p.risk_score DESC</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Operations -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateOps">
+                        <i class="fas fa-edit me-2"></i>Opérations UPDATE
+                    </button>
+                </h2>
+                <div id="updateOps" class="accordion-collapse collapse" data-bs-parent="#basicCrudAccordion">
+                    <div class="accordion-body">
+                        <h6>Mettre à jour une propriété :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'})
+SET p.risk_score = 0.8
+RETURN p</code></pre>
+
+                        <h6>Mettre à jour plusieurs propriétés :</h6>
+                        <pre><code>MATCH (c:Company {id: 'C1'})
+SET c.name = 'New Tech Corp',
+    c.risk_score = 0.4,
+    c.type = 'Domestic'
+RETURN c</code></pre>
+
+                        <h6>Ajouter une nouvelle propriété :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'})
+SET p.last_updated = datetime()
+RETURN p</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Operations -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteOps">
+                        <i class="fas fa-trash me-2"></i>Opérations DELETE
+                    </button>
+                </h2>
+                <div id="deleteOps" class="accordion-collapse collapse" data-bs-parent="#basicCrudAccordion">
+                    <div class="accordion-body">
+                        <h6>Supprimer une entité :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'})
+DELETE p</code></pre>
+
+                        <h6>Supprimer avec vérification :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'})
+DELETE p
+RETURN count(p) as deleted</code></pre>
+
+                        <h6>Supprimer toutes les entités d'un type :</h6>
+                        <pre><code>MATCH (t:Transaction)
+WHERE t.suspicious_score < 0.1
+DELETE t</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Queries -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-search me-2"></i>Requêtes avancées</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="advancedAccordion">
+            <!-- Relationships -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#relationships">
+                        <i class="fas fa-link me-2"></i>Créer des relations
+                    </button>
+                </h2>
+                <div id="relationships" class="accordion-collapse collapse" data-bs-parent="#advancedAccordion">
+                    <div class="accordion-body">
+                        <h6>Relier une personne à un compte bancaire :</h6>
+                        <pre><code>MATCH (p:Person {id: 'P1'}), (a:BankAccount {id: 'A1'})
+CREATE (p)-[:OWNS]->(a)
+RETURN p, a</code></pre>
+
+                        <h6>Relier un compte à une transaction :</h6>
+                        <pre><code>MATCH (a:BankAccount {id: 'A1'}), (t:Transaction {id: 'T1'})
+CREATE (a)-[:SENDS]->(t)
+RETURN a, t</code></pre>
+
+                        <h6>Créer une transaction complète :</h6>
+                        <pre><code>MATCH (sender:BankAccount {id: 'A1'}), (receiver:BankAccount {id: 'A2'})
+CREATE (t:Transaction {
+    id: 'T2',
+    amount: 5000.00,
+    date: date('2024-01-16'),
+    currency: 'USD',
+    suspicious_score: 0.9
+})
+CREATE (sender)-[:SENDS]->(t)-[:TO]->(receiver)
+RETURN sender, t, receiver</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complex Queries -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#complexQueries">
+                        <i class="fas fa-brain me-2"></i>Requêtes complexes
+                    </button>
+                </h2>
+                <div id="complexQueries" class="accordion-collapse collapse" data-bs-parent="#advancedAccordion">
+                    <div class="accordion-body">
+                        <h6>Trouver toutes les transactions suspectes avec détails :</h6>
+                        <pre><code>MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
+WHERE t.suspicious_score > 0.8
+RETURN sender.name AS from_person,
+       s.account_number AS from_account,
+       receiver.name AS to_person,
+       r.account_number AS to_account,
+       t.amount AS amount,
+       t.suspicious_score AS score,
+       t.date AS date
+ORDER BY t.suspicious_score DESC</code></pre>
+
+                        <h6>Analyser les patterns de transactions :</h6>
+                        <pre><code>MATCH (p:Person)-[:OWNS]->(a:BankAccount)-[:SENDS]->(t:Transaction)
+WHERE t.amount > 10000
+RETURN p.name AS person,
+       count(t) AS large_transactions,
+       sum(t.amount) AS total_amount,
+       avg(t.suspicious_score) AS avg_suspicion
+ORDER BY total_amount DESC</code></pre>
+
+                        <h6>Détecter les réseaux de transactions :</h6>
+                        <pre><code>MATCH path = (p1:Person)-[:OWNS]->(:BankAccount)-[:SENDS]->(:Transaction)-[:TO]->(:BankAccount)<-[:OWNS]-(p2:Person)
+WHERE p1 <> p2
+RETURN p1.name AS sender,
+       p2.name AS receiver,
+       count(path) AS transaction_count
+ORDER BY transaction_count DESC
+LIMIT 10</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#analytics">
+                        <i class="fas fa-chart-bar me-2"></i>Analyses et statistiques
+                    </button>
+                </h2>
+                <div id="analytics" class="accordion-collapse collapse" data-bs-parent="#advancedAccordion">
+                    <div class="accordion-body">
+                        <h6>Statistiques par pays :</h6>
+                        <pre><code>MATCH (p:Person)
+RETURN p.nationality AS country,
+       count(p) AS person_count,
+       avg(p.risk_score) AS avg_risk_score
+ORDER BY person_count DESC</code></pre>
+
+                        <h6>Analyse des devises :</h6>
+                        <pre><code>MATCH (t:Transaction)
+RETURN t.currency AS currency,
+       count(t) AS transaction_count,
+       sum(t.amount) AS total_volume,
+       avg(t.amount) AS avg_amount
+ORDER BY total_volume DESC</code></pre>
+
+                        <h6>Top des personnes à risque :</h6>
+                        <pre><code>MATCH (p:Person)-[:OWNS]->(a:BankAccount)-[:SENDS]->(t:Transaction)
+RETURN p.name AS person,
+       p.risk_score AS personal_risk,
+       count(t) AS transaction_count,
+       avg(t.suspicious_score) AS avg_transaction_suspicion,
+       sum(t.amount) AS total_sent
+ORDER BY personal_risk DESC, avg_transaction_suspicion DESC
+LIMIT 10</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Import Examples -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-download me-2"></i>Exemples d'import de données</h5>
+    </div>
+    <div class="card-body">
+        <h6>Créer des données d'exemple complètes :</h6>
+        <pre><code>// Créer des personnes
+CREATE (p1:Person {id: 'P1', name: 'Alice Johnson', national_id: '123-45-6789', nationality: 'USA', risk_score: 0.2})
+CREATE (p2:Person {id: 'P2', name: 'Bob Smith', national_id: '987-65-4321', nationality: 'Canada', risk_score: 0.8})
+
+// Créer des entreprises
+CREATE (c1:Company {id: 'C1', name: 'TechCorp Inc', country: 'USA', type: 'International', risk_score: 0.3})
+
+// Créer des comptes bancaires
+CREATE (a1:BankAccount {id: 'A1', account_number: 'US1234567890', bank_name: 'First Bank', country: 'USA', currency: 'USD'})
+CREATE (a2:BankAccount {id: 'A2', account_number: 'CA0987654321', bank_name: 'Royal Bank', country: 'Canada', currency: 'CAD'})
+
+// Créer des transactions
+CREATE (t1:Transaction {id: 'T1', amount: 15000.00, date: date('2024-01-15'), currency: 'USD', suspicious_score: 0.9})
+
+// Créer les relations
+CREATE (p1)-[:OWNS]->(a1)
+CREATE (p2)-[:OWNS]->(a2)
+CREATE (a1)-[:SENDS]->(t1)-[:TO]->(a2)
+
+RETURN p1, p2, c1, a1, a2, t1</code></pre>
+    </div>
+</div>
+{% endblock %} 

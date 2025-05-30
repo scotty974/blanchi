@@ -31,4 +31,7 @@ urlpatterns = [
     
     # Suspicious Transactions
     path('suspicious-transactions/', views.suspicious_transactions, name='suspicious_transactions'),
+    
+    # Neo4j Queries Reference
+    path('neo4j-queries/', views.neo4j_queries, name='neo4j_queries'),
 ] 

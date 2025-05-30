@@ -1,0 +1,70 @@
+{% extends 'crud/base.html' %}
+
+{% block title %}Suspicious Transactions - Neo4j CRUD{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-exclamation-triangle me-2"></i>Suspicious Transactions</h1>
+</div>
+
+<!-- Neo4j Query Display -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Query</h5>
+    </div>
+    <div class="card-body">
+        <pre><code class="language-cypher">MATCH (sender:Person)-[:OWNS]->(s:BankAccount)-[:SENDS]->(t:Transaction)-[:TO]->(r:BankAccount)<-[:OWNS]-(receiver:Person)
+WHERE t.suspicious_score > $threshold
+RETURN sender.name AS from, receiver.name AS to, t.amount AS amount, 
+       t.suspicious_score AS score, t.date AS date, t.currency AS currency</code></pre>
+        <small class="text-muted">Cette requête trouve toutes les transactions suspectes avec un score supérieur au seuil défini (0.8 par défaut).</small>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Amount</th>
+                            <th>Currency</th>
+                            <th>Date</th>
+                            <th>Suspicious Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td><strong>{{ transaction.from }}</strong></td>
+                            <td><strong>{{ transaction.to }}</strong></td>
+                            <td>${{ transaction.amount|floatformat:2 }}</td>
+                            <td><span class="badge bg-success">{{ transaction.currency }}</span></td>
+                            <td>{{ transaction.date }}</td>
+                            <td>
+                                {% if transaction.score >= 0.9 %}
+                                    <span class="badge bg-danger">{{ transaction.score|floatformat:2 }}</span>
+                                {% elif transaction.score >= 0.8 %}
+                                    <span class="badge bg-warning">{{ transaction.score|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ transaction.score|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No suspicious transactions found</h5>
+                <p class="text-muted">No transactions with suspicious score > 0.8 were found.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -12,6 +12,90 @@
     </div>
 </div>
 
+<!-- Neo4j Queries Display -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0"><i class="fas fa-code me-2"></i>Neo4j Cypher Queries</h5>
+    </div>
+    <div class="card-body">
+        <div class="accordion" id="companiesAccordion">
+            <!-- Read All Companies -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#readCompaniesQuery">
+                        <i class="fas fa-eye me-2"></i>Lire toutes les entreprises
+                    </button>
+                </h2>
+                <div id="readCompaniesQuery" class="accordion-collapse collapse" data-bs-parent="#companiesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (c:Company) RETURN c</code></pre>
+                        <small class="text-muted">Récupère toutes les entreprises de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Company -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#createCompanyQuery">
+                        <i class="fas fa-plus me-2"></i>Créer une entreprise
+                    </button>
+                </h2>
+                <div id="createCompanyQuery" class="accordion-collapse collapse" data-bs-parent="#companiesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">CREATE (c:Company {
+    id: $id,
+    name: $name,
+    country: $country,
+    type: $type,
+    risk_score: $risk_score
+})
+RETURN c</code></pre>
+                        <small class="text-muted">Crée une nouvelle entreprise avec les propriétés spécifiées.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Update Company -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#updateCompanyQuery">
+                        <i class="fas fa-edit me-2"></i>Modifier une entreprise
+                    </button>
+                </h2>
+                <div id="updateCompanyQuery" class="accordion-collapse collapse" data-bs-parent="#companiesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (c:Company {id: $id})
+SET c.name = $name, 
+    c.country = $country, 
+    c.type = $type, 
+    c.risk_score = $risk_score
+RETURN c</code></pre>
+                        <small class="text-muted">Met à jour les propriétés d'une entreprise existante.</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Company -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#deleteCompanyQuery">
+                        <i class="fas fa-trash me-2"></i>Supprimer une entreprise
+                    </button>
+                </h2>
+                <div id="deleteCompanyQuery" class="accordion-collapse collapse" data-bs-parent="#companiesAccordion">
+                    <div class="accordion-body">
+                        <pre><code class="language-cypher">MATCH (c:Company {id: $id}) 
+DELETE c 
+RETURN count(c) as deleted</code></pre>
+                        <small class="text-muted">Supprime une entreprise de la base de données.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         {% if companies %}

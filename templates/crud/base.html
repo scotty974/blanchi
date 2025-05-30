@@ -56,6 +56,16 @@
             color: white;
             border: none;
         }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+        code {
+            color: #e83e8c;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +101,17 @@
                         <li class="nav-item">
                             <a class="nav-link {% if 'transaction' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'transaction_list' %}">
                                 <i class="fas fa-exchange-alt me-2"></i> Transactions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'suspicious' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'suspicious_transactions' %}">
+                                <i class="fas fa-exclamation-triangle me-2"></i> Suspicious
+                            </a>
+                        </li>
+                        <hr class="text-white-50">
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'neo4j_queries' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'neo4j_queries' %}">
+                                <i class="fas fa-code me-2"></i> Cypher Queries
                             </a>
                         </li>
                     </ul>
